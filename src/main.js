@@ -26,6 +26,8 @@ import { createDiffractionGratingExperiment } from "./diffraction-grating.js";
 import { createDiodeExperiment } from "./diode-vi.js";
 import { createPofAttenuationExperiment } from "./pof-attenuation.js";
 import "./pof-attenuation.css";
+import { createPlanckExperiment } from "./planck-constant.js";
+import "./planck-constant.css";
 import {
   tutorialManager,
   normalizeExpId,
@@ -53,7 +55,8 @@ import {
 import {
   processUserDailyStreak,
   getStoredUserStreak,
-  getNextStreakMilestone
+  getNextStreakMilestone,
+  getLocalDateString
 } from "./streak.js";
 import {
   initPwaSystem,
@@ -107,7 +110,7 @@ export function getAuthoritativeUserXp(uid) {
         const parsed = Number(cached);
         if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
   return 0;
 }
@@ -118,7 +121,7 @@ export function setAuthoritativeUserXp(uid, xp, persistToStorage = true) {
   if (persistToStorage && canPerformCloudOperation() && uid && uid !== "guest") {
     try {
       localStorage.setItem(`physix_xp_${uid}`, String(cleanXp));
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -357,6 +360,7 @@ let hallEffectExperimentInstance = null;
 let physicsSandboxExperimentInstance = null;
 let diffractionExperimentInstance = null;
 let diodeExperimentInstance = null;
+let planckExperimentInstance = null;
 
 // Help & Interactive User Guide DOM Elements
 const helpModal = document.getElementById("help-modal");
@@ -1254,12 +1258,12 @@ const ALL_BADGES = [
   { id: "badge-target-hit", name: "Bullseye Sniper", desc: "Score a direct hit on the target in Target Challenge Mode." },
   { id: "badge-ch-compl", name: "Complementary Angle Ace", desc: "Verify complementary angle theorem with equivalent horizontal range." },
   { id: "badge-ch-moon", name: "Stratospheric Apex", desc: "Fire high-altitude trajectories reaching apex H ≥ 40m." },
-  
+
   // Optical Fibre NA Mastery (Exp 2)
   { id: "badge-of-spot-match", name: "Spot Match Master", desc: "Match diverging laser spot precisely on 2.0 cm concentric target ring." },
   { id: "badge-of-rapid-calib", name: "Laser Calibration Virtuoso", desc: "Complete the 40s rapid 3-point calibration run in Optical Lab." },
   { id: "badge-of-multi-sweep", name: "NA Invariance Champion", desc: "Record readings across 3 distance zones proving Numerical Aperture invariance." },
-  
+
   // Colour Sensor Mastery (Exp 3)
   { id: "badge-cs-tristimulus", name: "Tristimulus Virtuoso", desc: "Calibrate White Balance and verify primary RGB spectral filters." },
   { id: "badge-cs-mystery-detective", name: "Spectroscopic Detective", desc: "Identify unknown chemical pigment by analyzing spectral frequency peaks." },
@@ -1364,7 +1368,7 @@ function saveStoredUserProfile(profileData) {
     console.warn("Error saving profile to localStorage", e);
   }
   // Asynchronously sync with Express backend
-  api.saveProfile(getActiveUserId(), profileData).catch(() => {});
+  api.saveProfile(getActiveUserId(), profileData).catch(() => { });
 
   // Asynchronously sync with Firestore users/{uid}
   if (auth.currentUser) {
@@ -1529,7 +1533,7 @@ async function unlockBadge(badgeId, badgeTitle, persistToStorage = true) {
     }
 
     // 4. Sync with Express backend
-    api.unlockBadge(userId, badgeId).catch(() => {});
+    api.unlockBadge(userId, badgeId).catch(() => { });
 
     // 5. Notify user and refresh UI
     console.log(`%c[Badge] ✓ Badge eligibility result: Unlocked "${badgeTitle}" (${badgeId})`, "color: #10b981; font-weight: bold;");
@@ -1641,7 +1645,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedOf[ofKey]) savedOf[ofKey] = {};
         savedOf[ofKey].completed = true;
         localStorage.setItem("physix_of_challenges", JSON.stringify(savedOf));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (opticalExperimentInstance && typeof opticalExperimentInstance.hydrateChallenges === "function") {
       opticalExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1657,7 +1661,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedCs[csKey]) savedCs[csKey] = {};
         savedCs[csKey].completed = true;
         localStorage.setItem("physix_cs_challenges", JSON.stringify(savedCs));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (colourSensorExperimentInstance && typeof colourSensorExperimentInstance.hydrateChallenges === "function") {
       colourSensorExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1673,7 +1677,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedHall[hallKey]) savedHall[hallKey] = {};
         savedHall[hallKey].completed = true;
         localStorage.setItem("physix_hall_challenges", JSON.stringify(savedHall));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (hallEffectExperimentInstance && typeof hallEffectExperimentInstance.hydrateChallenges === "function") {
       hallEffectExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1689,7 +1693,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedSb[sbKey]) savedSb[sbKey] = {};
         savedSb[sbKey].completed = true;
         localStorage.setItem("physix_sb_challenges", JSON.stringify(savedSb));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (physicsSandboxExperimentInstance && typeof physicsSandboxExperimentInstance.hydrateChallenges === "function") {
       physicsSandboxExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1705,7 +1709,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedDg[dgKey]) savedDg[dgKey] = {};
         savedDg[dgKey].completed = true;
         localStorage.setItem("physix_dg_challenges", JSON.stringify(savedDg));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (diffractionExperimentInstance && typeof diffractionExperimentInstance.hydrateChallenges === "function") {
       diffractionExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1721,7 +1725,7 @@ function syncChallengeToLocalState(challengeId, persistToStorage = true) {
         if (!savedDiode[diodeKey]) savedDiode[diodeKey] = {};
         savedDiode[diodeKey].completed = true;
         localStorage.setItem("physix_diode_challenges", JSON.stringify(savedDiode));
-      } catch (e) {}
+      } catch (e) { }
     }
     if (diodeExperimentInstance && typeof diodeExperimentInstance.hydrateChallenges === "function") {
       diodeExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1750,12 +1754,12 @@ export async function completeChallengeAuthoritatively({ challengeId, xp, badgeI
     // Do NOT write to Firestore, do NOT sync to API, do NOT persist to permanent localStorage.
     if (!canPerformCloudOperation()) {
       console.log(`[Challenge] Offline completion of ${challengeId} (+${numXp} XP) — in-memory session only`);
-      
+
       activeAuthoritativeCompletedChallenges = Array.from(new Set([...activeAuthoritativeCompletedChallenges, challengeId]));
       if (typeof activeAuthoritativeXp === "number") {
         activeAuthoritativeXp += numXp;
       }
-      
+
       // Update in-memory state of active experiment simulators without writing to localStorage
       syncChallengeToLocalState(challengeId, false);
 
@@ -1795,9 +1799,9 @@ export async function completeChallengeAuthoritatively({ challengeId, xp, badgeI
       }
 
       // Sync with Express backend
-      api.addXp(user.uid, numXp, title || challengeId).catch(() => {});
+      api.addXp(user.uid, numXp, title || challengeId).catch(() => { });
       if (badgeId) {
-        api.unlockBadge(user.uid, badgeId).catch(() => {});
+        api.unlockBadge(user.uid, badgeId).catch(() => { });
       }
     } else {
       // Unauthenticated guest mode
@@ -1868,7 +1872,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       savedOf.multiSweep.completed = true;
     }
     localStorage.setItem("physix_of_challenges", JSON.stringify(savedOf));
-  } catch (e) {}
+  } catch (e) { }
 
   if (opticalExperimentInstance && typeof opticalExperimentInstance.hydrateChallenges === "function") {
     opticalExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1890,7 +1894,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       savedCs.distanceSweep.completed = true;
     }
     localStorage.setItem("physix_cs_challenges", JSON.stringify(savedCs));
-  } catch (e) {}
+  } catch (e) { }
 
   if (colourSensorExperimentInstance && typeof colourSensorExperimentInstance.hydrateChallenges === "function") {
     colourSensorExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1912,7 +1916,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       savedHall.mobilityExtraction.completed = true;
     }
     localStorage.setItem("physix_hall_challenges", JSON.stringify(savedHall));
-  } catch (e) {}
+  } catch (e) { }
 
   if (hallEffectExperimentInstance && typeof hallEffectExperimentInstance.hydrateChallenges === "function") {
     hallEffectExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1934,7 +1938,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       savedSb.zerog.completed = true;
     }
     localStorage.setItem("physix_sb_challenges", JSON.stringify(savedSb));
-  } catch (e) {}
+  } catch (e) { }
 
   if (physicsSandboxExperimentInstance && typeof physicsSandboxExperimentInstance.hydrateChallenges === "function") {
     physicsSandboxExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1951,7 +1955,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       }
     });
     localStorage.setItem("physix_dg_challenges", JSON.stringify(savedDg));
-  } catch (e) {}
+  } catch (e) { }
 
   if (diffractionExperimentInstance && typeof diffractionExperimentInstance.hydrateChallenges === "function") {
     diffractionExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -1968,7 +1972,7 @@ function hydrateAllExperimentChallenges(completedChallengeIds) {
       }
     });
     localStorage.setItem("physix_diode_challenges", JSON.stringify(savedDiode));
-  } catch (e) {}
+  } catch (e) { }
 
   if (diodeExperimentInstance && typeof diodeExperimentInstance.hydrateChallenges === "function") {
     diodeExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
@@ -2008,7 +2012,7 @@ function addStudentXp(amount, reason) {
     });
 
     // Sync to Express backend
-    api.addXp(user.uid, numAmount, reason).catch(() => {});
+    api.addXp(user.uid, numAmount, reason).catch(() => { });
   } else {
     if (!canPerformCloudOperation()) {
       showChallengeGraffiti(reason || "Laboratory Challenge Completed", numAmount);
@@ -2127,7 +2131,7 @@ function checkFlightChallenges(flightData) {
   // Challenge 2: Complementary Angle Law (θ1 + θ2 = 90° on flat ground h0 = 0 -> equal range)
   if (!challenges.complementary?.completed && currentH0 <= 0.2) {
     const candidateLogs = [...flatGroundLaunches, ...getStoredObservations().filter(l => Number(l.h0) <= 0.2)];
-    
+
     const compMatch = candidateLogs.find(prev => {
       const pAngle = Number(prev.angle);
       const pV0 = Number(prev.v0);
@@ -2316,7 +2320,7 @@ function recordCurrentObservation() {
 
   // Sync with Express backend if online
   if (canPerformCloudOperation()) {
-    api.addObservation(getActiveUserId(), obsEntry).catch(() => {});
+    api.addObservation(getActiveUserId(), obsEntry).catch(() => { });
   }
 
   // Sync to Firestore users/{uid}/experiments/projectile if online
@@ -2334,7 +2338,7 @@ function recordCurrentObservation() {
       if (res && res.experimentsPerformed >= 5) {
         unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   renderObservationsTable();
@@ -2343,7 +2347,7 @@ function recordCurrentObservation() {
 
 function clearAllObservations() {
   saveStoredObservations([]);
-  api.clearObservations(getActiveUserId()).catch(() => {});
+  api.clearObservations(getActiveUserId()).catch(() => { });
   renderObservationsTable();
   showToast("All experimental observations cleared.");
 }
@@ -2483,7 +2487,7 @@ function calculateLegacyLocalXp(stats, quizHigh, targetScore, badgeCount) {
     if (sbChallenges.thrust?.completed) chXp += 100;
     if (sbChallenges.kick?.completed) chXp += 125;
     if (sbChallenges.zerog?.completed) chXp += 150;
-  } catch (e) {}
+  } catch (e) { }
 
   return (quizHigh * 50) + (targetScore || 0) + ((stats?.totalLaunches || 0) * 15) + ((badgeCount || 0) * 40) + bonusXp + chXp;
 }
@@ -2530,7 +2534,7 @@ function recordLaunchTelemetry(v0, angleDeg, h0, g) {
 
   saveStoredTelemetry(stats);
   // Express backend sync
-  api.recordLaunch(getActiveUserId(), { v0, angleDeg, h0, g }).catch(() => {});
+  api.recordLaunch(getActiveUserId(), { v0, angleDeg, h0, g }).catch(() => { });
   loadUserProfile();
 }
 
@@ -2570,7 +2574,7 @@ function recordFlightComplete(flightData) {
   saveStoredFlightLogs(logs);
 
   // Express backend sync
-  api.recordFlightComplete(getActiveUserId(), flightData).catch(() => {});
+  api.recordFlightComplete(getActiveUserId(), flightData).catch(() => { });
 
   loadUserProfile();
 }
@@ -2658,7 +2662,7 @@ function loadUserProfile() {
       }
     }
     localStorage.setItem(prevLevelKey, rankInfo.level.toString());
-  } catch (e) {}
+  } catch (e) { }
 
   const displayName = (user && user.displayName) || profile.name || (user ? user.email.split("@")[0] : "");
   const displayEmail = (user && user.email) || "";
@@ -3089,7 +3093,7 @@ btnSubtabForgot?.addEventListener("click", () => showAuthSubView("forgot"));
 // Clear Flight Logs
 btnClearFlightLogs?.addEventListener("click", () => {
   saveStoredFlightLogs([]);
-  api.clearFlightLogs(getActiveUserId()).catch(() => {});
+  api.clearFlightLogs(getActiveUserId()).catch(() => { });
   loadUserProfile();
   showToast("Telemetry flight records cleared.");
 });
@@ -3177,7 +3181,7 @@ formSignup?.addEventListener("submit", async (e) => {
   try {
     signupErrorMsg.classList.add("hidden");
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
+
     // 1. Immediately send verification email
     try {
       await sendEmailVerification(userCredential.user);
@@ -3979,7 +3983,7 @@ function showQuizResults() {
     localStorage.setItem("physix_quiz_highscore", Math.max(score, Number(localStorage.getItem("physix_quiz_highscore") || 0)));
 
     recordQuizTelemetry(score, total);
-    api.submitQuiz(getActiveUserId(), quizState.userAnswers).catch(() => {});
+    api.submitQuiz(getActiveUserId(), quizState.userAnswers).catch(() => { });
 
     // Sync to Firestore users/{uid}/quizAttempts/{attemptId}
     if (auth.currentUser) {
@@ -4152,7 +4156,7 @@ btnOpenQuiz?.addEventListener("click", (e) => {
     if (tutorialManager && typeof tutorialManager.skipTutorial === "function" && tutorialManager.isActive) {
       tutorialManager.skipTutorial();
     }
-  } catch (err) {}
+  } catch (err) { }
   const norm = (typeof normalizeExpId === "function")
     ? normalizeExpId(activeExperimentId || "projectile")
     : (activeExperimentId || "projectile");
@@ -4266,7 +4270,7 @@ btnOpenTheory?.addEventListener("click", (e) => {
     if (tutorialManager && typeof tutorialManager.skipTutorial === "function" && tutorialManager.isActive) {
       tutorialManager.skipTutorial();
     }
-  } catch (err) {}
+  } catch (err) { }
   showTheoryForExperiment(activeExperimentId);
   theoryModal?.classList.remove("hidden");
   renderMathInDOM(theoryModal);
@@ -4398,7 +4402,7 @@ function openHelpForCurrentExperiment() {
   if (typeof renderMathInElement === "function") {
     try {
       renderMathInElement(helpModal);
-    } catch (_) {}
+    } catch (_) { }
   }
 }
 
@@ -4867,6 +4871,15 @@ const expSandboxSection = document.getElementById("exp-sandbox-section");
 const expDiffractionSection = document.getElementById("exp-diffraction-section");
 const expDiodeSection = document.getElementById("exp-diode-section");
 const expPofSection = document.getElementById("exp-pof-attenuation-section");
+const expPlanckSection = document.getElementById("exp-planck-section");
+const btnSwitchProj = document.getElementById("btn-switch-exp-projectile");
+const btnSwitchOpt = document.getElementById("btn-switch-exp-optical");
+const btnSwitchColour = document.getElementById("btn-switch-exp-colour");
+const btnSwitchHall = document.getElementById("btn-switch-exp-hall");
+const btnSwitchSandbox = document.getElementById("btn-switch-exp-sandbox");
+const btnSwitchDiffraction = document.getElementById("btn-switch-exp-diffraction");
+const btnSwitchDiode = document.getElementById("btn-switch-exp-diode");
+const btnSwitchPlanck = document.getElementById("btn-switch-exp-planck");
 let pofExperimentInstance = null;
 
 async function trackExperimentEngagement(expId) {
@@ -4918,6 +4931,7 @@ function switchExperiment(expId, updateUrl = true) {
   else if (expId === "diffraction-grating") normalizedId = "diffraction";
   else if (expId === "optical-fibre") normalizedId = "optical";
   else if (expId === "physics-sandbox") normalizedId = "sandbox";
+  else if (expId === "planck-constant" || expId === "planck") normalizedId = "planck";
 
   activeExperimentId = normalizedId;
   trackExperimentEngagement(normalizedId);
@@ -4930,14 +4944,21 @@ function switchExperiment(expId, updateUrl = true) {
   expDiffractionSection?.classList.add("hidden");
   expDiodeSection?.classList.add("hidden");
   expPofSection?.classList.add("hidden");
+  expPlanckSection?.classList.add("hidden");
+
+  [btnSwitchProj, btnSwitchOpt, btnSwitchColour, btnSwitchHall, btnSwitchSandbox, btnSwitchDiffraction, btnSwitchDiode, btnSwitchPlanck].forEach(button => {
+    button?.classList.remove("active");
+  });
 
   const routeSlug = normalizedId === "pof-attenuation"
     ? "pof-attenuation"
-    : (normalizedId === "diode"
-      ? "diode-vi"
-      : (normalizedId === "diffraction"
-        ? "diffraction-grating"
-        : (normalizedId === "optical" ? "optical-fibre" : normalizedId)));
+    : (normalizedId === "planck"
+      ? "planck-constant"
+      : (normalizedId === "diode"
+        ? "diode-vi"
+        : (normalizedId === "diffraction"
+          ? "diffraction-grating"
+          : (normalizedId === "optical" ? "optical-fibre" : normalizedId))));
 
   if (updateUrl && !document.body.classList.contains("on-homepage")) {
     const targetUrl = `/simulations/${routeSlug}`;
@@ -4948,6 +4969,7 @@ function switchExperiment(expId, updateUrl = true) {
 
   if (normalizedId === "diffraction") {
     expDiffractionSection?.classList.remove("hidden");
+    btnSwitchDiffraction?.classList.add("active");
 
     if (!diffractionExperimentInstance) {
       diffractionExperimentInstance = createDiffractionGratingExperiment({
@@ -4962,7 +4984,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -4988,6 +5010,7 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 4: Diffraction Grating");
   } else if (normalizedId === "sandbox") {
     expSandboxSection?.classList.remove("hidden");
+    btnSwitchSandbox?.classList.add("active");
 
     if (!physicsSandboxExperimentInstance) {
       physicsSandboxExperimentInstance = createPhysicsSandboxExperiment({
@@ -5018,6 +5041,7 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 6: Physics Sandbox");
   } else if (normalizedId === "hall-effect") {
     expHallSection?.classList.remove("hidden");
+    btnSwitchHall?.classList.add("active");
 
     if (!hallEffectExperimentInstance) {
       hallEffectExperimentInstance = createHallEffectExperiment({
@@ -5032,7 +5056,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -5058,6 +5082,7 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 4: Hall Effect Experiment");
   } else if (normalizedId === "colour-sensor") {
     expColourSection?.classList.remove("hidden");
+    btnSwitchColour?.classList.add("active");
 
     if (!colourSensorExperimentInstance) {
       colourSensorExperimentInstance = createColourSensorExperiment({
@@ -5072,7 +5097,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -5098,6 +5123,7 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 3: Study of Colour Sensor");
   } else if (normalizedId === "optical") {
     expOptSection?.classList.remove("hidden");
+    btnSwitchOpt?.classList.add("active");
 
     if (!opticalExperimentInstance) {
       opticalExperimentInstance = createOpticalFibreExperiment({
@@ -5112,7 +5138,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -5138,6 +5164,7 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 2: Numerical Aperture of Optical Fibre");
   } else if (normalizedId === "diode") {
     expDiodeSection?.classList.remove("hidden");
+    btnSwitchDiode?.classList.add("active");
 
     if (!diodeExperimentInstance) {
       diodeExperimentInstance = createDiodeExperiment({
@@ -5152,7 +5179,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -5176,6 +5203,47 @@ function switchExperiment(expId, updateUrl = true) {
     }
 
     showToast("Switched to Exp 6: Diode Characteristics");
+  } else if (normalizedId === "planck") {
+    expPlanckSection?.classList.remove("hidden");
+    btnSwitchPlanck?.classList.add("active");
+
+    if (!planckExperimentInstance) {
+      planckExperimentInstance = createPlanckExperiment({
+        onXpAwarded: (amount, reason) => addStudentXp(amount, reason),
+        onExperimentRecorded: (id, data) => {
+          if (auth.currentUser && canPerformCloudOperation()) {
+            recordExperimentInFirestore(auth.currentUser.uid, id, data).then(res => {
+              if (res && typeof res.totalXP === "number") {
+                setAuthoritativeUserXp(auth.currentUser.uid, res.totalXP);
+                loadUserProfile();
+              }
+              if (res && res.experimentsPerformed >= 5) {
+                unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
+              }
+            }).catch(() => { });
+          }
+        },
+        showToast,
+        getActiveUserId,
+        loadUserProfile,
+        getStoredUserProfile,
+        unlockBadge: (badgeId, badgeName) => unlockBadge(badgeId, badgeName),
+        isUserAuthenticated,
+        openLoginModal,
+        onChallengeCompleted: (data) => completeChallengeAuthoritatively(data)
+      });
+      planckExperimentInstance.init();
+      if (activeAuthoritativeCompletedChallenges.length > 0) {
+        planckExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
+      }
+    } else {
+      if (activeAuthoritativeCompletedChallenges.length > 0) {
+        planckExperimentInstance.hydrateChallenges(activeAuthoritativeCompletedChallenges);
+      }
+      planckExperimentInstance.renderAll();
+    }
+
+    showToast("Switched to Exp 7: Planck's Constant");
   } else if (normalizedId === "pof-attenuation") {
     expPofSection?.classList.remove("hidden");
 
@@ -5192,7 +5260,7 @@ function switchExperiment(expId, updateUrl = true) {
               if (res && res.experimentsPerformed >= 5) {
                 unlockBadge("badge-lab-veteran", "Laboratory Veteran (Explored Labs 5+ Times)");
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         },
         showToast,
@@ -5219,17 +5287,41 @@ function switchExperiment(expId, updateUrl = true) {
     showToast("Switched to Exp 7: Plastic Optical Fiber Attenuation");
   } else {
     expProjSection?.classList.remove("hidden");
+    btnSwitchProj?.classList.add("active");
 
     showToast("Switched to Exp 1: 2D Projectile Motion");
   }
 
   updateAiContextStrip();
 
+  // Put the active simulator viewport in view when opened directly or from the lab switcher.
+  requestAnimationFrame(() => {
+    const viewport = normalizedId === "projectile"
+      ? document.querySelector("#exp-projectile-section .simulation-card")
+      : (normalizedId === "planck" ? document.querySelector("#exp-planck-section .planck-bench-card") : null);
+    viewport?.scrollIntoView({ block: "start", behavior: "instant" });
+  });
+
   // Automatic first-time interactive guided onboarding tour
   tutorialManager.maybeTriggerFirstTimeTutorial(normalizedId);
   renderMathInDOM(document.body); // Update math on experiment switch
 }
-window.switchExperiment = switchExperiment;
+window.switchExperiment = switchExperiment;
+
+btnSwitchProj?.addEventListener("click", () => switchExperiment("projectile"));
+btnSwitchOpt?.addEventListener("click", () => switchExperiment("optical"));
+btnSwitchColour?.addEventListener("click", () => switchExperiment("colour-sensor"));
+btnSwitchHall?.addEventListener("click", () => switchExperiment("hall-effect"));
+btnSwitchSandbox?.addEventListener("click", () => switchExperiment("sandbox"));
+btnSwitchDiffraction?.addEventListener("click", () => switchExperiment("diffraction"));
+btnSwitchDiode?.addEventListener("click", () => switchExperiment("diode"));
+btnSwitchPlanck?.addEventListener("click", () => switchExperiment("planck"));
+
+
+
+
+
+
 
 // ==========================================
 // LAB & EXPERIMENT CARDS INTERACTION & WHITE LIGHT EFFECT
@@ -5251,11 +5343,18 @@ allExperimentCards.forEach(card => {
     else if (target === "sandbox" || name.toLowerCase().includes("sandbox")) expId = "sandbox";
     else if (target === "colour-sensor" || name.toLowerCase().includes("colour sensor")) expId = "colour-sensor";
     else if (target === "optical" || name.toLowerCase().includes("optical fibre")) expId = "optical";
+    else if (target === "planck" || name.toLowerCase().includes("planck")) expId = "planck";
     else if (target === "projectile" || card.classList.contains("active-lab") || name.toLowerCase().includes("projectile")) expId = "projectile";
 
     if (expId) {
       explorerModal?.classList.add("hidden");
-      navigateTo(`/experiment/${expId}`);
+      if (expId === "planck") {
+        navigateTo("/simulations/planck-constant");
+      } else if (expId === "pof-attenuation") {
+        navigateTo("/simulations/pof-attenuation");
+      } else {
+        navigateTo(`/experiment/${expId}`);
+      }
     } else {
       showToast(`${name || "This experiment"} is currently in calibration. Full module coming soon!`);
     }
@@ -5523,7 +5622,7 @@ async function completeVerifiedUserInitialization(user) {
         if (sbSaved.thrust?.completed) localCandidates.push("sandbox.thrust");
         if (sbSaved.kick?.completed) localCandidates.push("sandbox.kick");
         if (sbSaved.zerog?.completed) localCandidates.push("sandbox.zerog");
-      } catch (e) {}
+      } catch (e) { }
 
       activeAuthoritativeCompletedChallenges = localCandidates;
       hydrateAllExperimentChallenges(localCandidates);
@@ -5599,7 +5698,7 @@ async function completeVerifiedUserInitialization(user) {
         };
         try {
           localStorage.setItem("physix_user_profile", JSON.stringify(updatedProfile));
-        } catch (e) {}
+        } catch (e) { }
       }
     } catch (err) {
       console.warn("[Firestore] fetchFullUserDataFromFirestore sync notice:", err);
@@ -5633,7 +5732,7 @@ async function completeVerifiedUserInitialization(user) {
       if (sbSaved.thrust?.completed) localCandidates.push("sandbox.thrust");
       if (sbSaved.kick?.completed) localCandidates.push("sandbox.kick");
       if (sbSaved.zerog?.completed) localCandidates.push("sandbox.zerog");
-    } catch (e) {}
+    } catch (e) { }
 
     const mergedChallenges = Array.from(new Set([...cloudChallenges, ...localCandidates]));
     activeAuthoritativeCompletedChallenges = mergedChallenges;
@@ -5804,7 +5903,7 @@ document.addEventListener("visibilitychange", async () => {
       const currentUser = auth?.currentUser || null;
       await processUserDailyStreak(currentUser);
       loadUserProfile();
-    } catch (e) {}
+    } catch (e) { }
   }
 });
 
@@ -5857,9 +5956,11 @@ export function openExperimentDetailsPage(expId) {
   tutorialManager.destroyTour();
   const normalizedId = (expId === "pof-attenuation" || expId === "optical-attenuation" || expId === "pof")
     ? "pof-attenuation"
-    : ((expId === "sandbox" || expId === "hall-effect" || expId === "colour-sensor" || expId === "optical" || expId === "projectile" || expId === "diffraction" || expId === "diffraction-grating" || expId === "diode" || expId === "diode-vi")
-    ? (expId === "diffraction-grating" ? "diffraction" : (expId === "diode-vi" ? "diode" : expId))
-    : "projectile");
+    : ((expId === "planck" || expId === "planck-constant")
+      ? "planck"
+      : ((expId === "sandbox" || expId === "hall-effect" || expId === "colour-sensor" || expId === "optical" || expId === "projectile" || expId === "diffraction" || expId === "diffraction-grating" || expId === "diode" || expId === "diode-vi")
+        ? (expId === "diffraction-grating" ? "diffraction" : (expId === "diode-vi" ? "diode" : expId))
+        : "projectile"));
 
   const data = EXPERIMENT_DETAILS[normalizedId] || EXPERIMENT_DETAILS["projectile"];
   currentActiveDetailExpId = normalizedId;
@@ -6022,10 +6123,21 @@ function initExperimentsPage() {
     else if (target === "sandbox" || name.toLowerCase().includes("sandbox")) expId = "sandbox";
     else if (target === "colour-sensor" || name.toLowerCase().includes("colour sensor")) expId = "colour-sensor";
     else if (target === "optical" || name.toLowerCase().includes("optical fibre")) expId = "optical";
+    else if (target === "planck" || name.toLowerCase().includes("planck")) expId = "planck";
     else if (target === "projectile" || card.classList.contains("active-lab") || name.toLowerCase().includes("projectile")) expId = "projectile";
 
     if (expId) {
-      navigateTo(`/experiment/${expId}`);
+      if (expId === "planck") {
+        document.body.classList.remove("on-standalone-page");
+        document.getElementById("physix-experiments-page")?.classList.add("hidden");
+        switchExperiment("planck", true);
+      } else if (expId === "pof-attenuation") {
+        document.body.classList.remove("on-standalone-page");
+        document.getElementById("physix-experiments-page")?.classList.add("hidden");
+        switchExperiment("pof-attenuation", true);
+      } else {
+        navigateTo(`/experiment/${expId}`);
+      }
     } else {
       showToast(`${name || "This experiment"} is currently in calibration. Full module coming soon!`);
     }
@@ -6114,6 +6226,7 @@ export function handleRoute(path = window.location.pathname, hash = window.locat
     else if (expId === "diffraction-grating" || expId === "diffraction") mappedId = "diffraction";
     else if (expId === "optical-fibre" || expId === "optical") mappedId = "optical";
     else if (expId === "colour-sensor") mappedId = "colour-sensor";
+    else if (expId === "planck" || expId === "planck-constant") mappedId = "planck";
     else if (expId === "sandbox" || expId === "physics-sandbox") mappedId = "sandbox";
     else mappedId = "projectile";
     switchExperiment(mappedId, false);
@@ -6136,7 +6249,7 @@ export function handleRoute(path = window.location.pathname, hash = window.locat
     expPage?.classList.remove("hidden");
     initExperimentsPage();
     window.scrollTo({ top: 0, behavior: "instant" });
-  } else if (cleanHash === "#diffraction" || cleanHash === "#diffraction-grating" || cleanHash === "#hall-effect" || cleanHash === "#sandbox" || cleanHash === "#pof-attenuation" || cleanHash === "#optical" || cleanHash === "#colour-sensor" || cleanHash === "#projectile") {
+  } else if (cleanHash === "#diffraction" || cleanHash === "#diffraction-grating" || cleanHash === "#hall-effect" || cleanHash === "#sandbox" || cleanHash === "#pof-attenuation" || cleanHash === "#optical" || cleanHash === "#colour-sensor" || cleanHash === "#projectile" || cleanHash === "#planck" || cleanHash === "#planck-constant") {
     // Direct link to simulation
     document.body.classList.remove("on-homepage");
     document.body.classList.remove("on-standalone-page");
@@ -6144,6 +6257,7 @@ export function handleRoute(path = window.location.pathname, hash = window.locat
     let mapped = cleanHash.replace("#", "");
     if (mapped === "diode-vi" || mapped === "pn-junction") mapped = "diode";
     else if (mapped === "diffraction-grating") mapped = "diffraction";
+    else if (mapped === "planck-constant") mapped = "planck";
     switchExperiment(mapped, false);
   } else if (cleanPath.endsWith("/profile") || cleanHash === "#profile") {
     document.body.classList.remove("on-standalone-page");
@@ -6332,12 +6446,13 @@ if (initialPath.startsWith("/experiment/") || initialPath.startsWith("/simulatio
   initSplashScreen(() => {
     handleRoute(initialPath, initialHash);
   });
-} else if (initialHash === "#diffraction" || initialHash === "#diffraction-grating" || initialHash === "#hall-effect" || initialHash === "#sandbox" || initialHash === "#optical" || initialHash === "#colour-sensor" || initialHash === "#projectile") {
+} else if (initialHash === "#diffraction" || initialHash === "#diffraction-grating" || initialHash === "#hall-effect" || initialHash === "#sandbox" || initialHash === "#pof-attenuation" || initialHash === "#optical" || initialHash === "#colour-sensor" || initialHash === "#projectile" || initialHash === "#planck" || initialHash === "#planck-constant") {
   document.body.classList.remove("on-homepage");
   physixHome?.classList.add("hidden");
   initSplashScreen(() => {
     let target = initialHash.replace("#", "");
     if (target === "diffraction-grating") target = "diffraction";
+    if (target === "planck-constant") target = "planck";
     switchExperiment(target, false);
   });
 } else {
@@ -6376,7 +6491,7 @@ loadUserProfile();
         loadUserProfile();
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 })();
 renderObservationsTable();
 renderChallenges();
