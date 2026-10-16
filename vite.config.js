@@ -59,13 +59,17 @@ export default defineConfig({
         swSrc: "public/sw.js",
         swDest: "sw.js"
       },
+
       workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,webmanifest}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /^\/version\.json/],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false,
+
         runtimeCaching: [
           {
             urlPattern: /\/version\.json$/i,
@@ -101,6 +105,7 @@ export default defineConfig({
           }
         ]
       }
+
     })
   ]
 });
